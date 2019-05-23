@@ -10,6 +10,7 @@ import src.coder as coder
 from src.blockchain_wrapper import BlockchainWrapper
 from src.updater.data_retriever import DataRetriever
 from src.updater.balance_updater import BalanceUpdater
+from src.decorator import db_get_wrapper
 
 LOG = logging.getLogger()
 
@@ -480,7 +481,7 @@ class DatabaseUpdater:
         addresses_encode = {}
         addresses_write_dict = {}
         for addr_hash, addr_dict in addresses.items():
-            existing_data = self.db.get(b'address-' + addr_hash.encode())
+            existing_data = db_get_wrapper(self.db, b'address-' + addr_hash.encode())
             # Address not yet in records
             if existing_data is not None:
                 existing_address = coder.decode_address(existing_data)
@@ -642,7 +643,7 @@ class DatabaseUpdater:
         full_tokens = {}
         filtered_txs = {}
         for token_tx in token_txs:
-            data = self.db.get(b'token-' + token_tx['tokenAddress'].encode())
+            data = db_get_wrapper(self.db, b'token-' + token_tx['tokenAddress'].encode())
             if data is not None:
                 db_token = coder.decode_token(data)
                 db_token['transactions'] = []
@@ -718,6 +719,7 @@ class DatabaseUpdater:
             txs_write_dict: Associations between internal txs and txs.
         """
         self.db_lock.acquire()
+        print('lock started')
         LOG.info('Writing to database.')
         wb = rocksdb.WriteBatch()
         for block_hash, block_dict in blocks.items():
@@ -763,6 +765,7 @@ class DatabaseUpdater:
 
         self.db.write(wb)
         self.db_lock.release()
+        print('lock ended')
 
 
 def update_database(db_location: str,

@@ -8,6 +8,7 @@ import rocksdb
 
 from src.request.balances import BalanceGatherer
 import src.coder as coder
+from src.decorator import db_get_wrapper
 
 LOG = logging.getLogger()
 
@@ -107,7 +108,7 @@ class BalanceUpdater:
         """
         address_objects = {}
         for address in addr_balances:
-            raw_addr = self.db.get(b'address-' + str(address).encode())
+            raw_addr = db_get_wrapper(self.db, b'address-' + str(address).encode())
             if raw_addr is None:
                 continue
             address_objects[address] = coder.decode_address(raw_addr)

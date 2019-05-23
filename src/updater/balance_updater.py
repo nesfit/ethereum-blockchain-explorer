@@ -15,7 +15,8 @@ LOG = logging.getLogger()
 class BalanceUpdater:
     """Class for filling addresses with current balance information."""
 
-    def __init__(self, bulk_size: int, datapath: str, interface: str, db: Any) -> None:
+    def __init__(self, bulk_size: int, datapath: str,
+                 interface: str, db: Any, db_lock: Any) -> None:
         """
         Initialization.
 
@@ -24,11 +25,13 @@ class BalanceUpdater:
             datapath: Path for temporary file created in DB creation.
             interface: Path to the Geth blockchain node.
             db: Database instance.
+            db_lock: Mutex that prevents simultanious DB write and read (to prevent read errors).
         """
         self._bulk_size = bulk_size
         self.datapath = datapath
         self._interface = interface
         self.db = db
+        self.db_lock = db_lock
         # self.address_db = db.prefixed_db(b'address-')
 
     def _save_addresses(self, addresses: Dict, sort: bool) -> None:
@@ -110,9 +113,11 @@ class BalanceUpdater:
             address_objects[address] = coder.decode_address(raw_addr)
             address_objects[address]['balance'] = addr_balances[address]
 
+        self.db_lock.acquire()
         wb = rocksdb.WriteBatch()
         for address in address_objects:
             address_value = coder.encode_address(address_objects[address])
             wb.put(b'address-' + str(address).encode(), address_value)
 
         self.db.write(wb)
+        self.db_lock.release()
